@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'https://agrilink-1-zqcq.onrender.com/api/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL, // Use environment variable
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -34,14 +34,11 @@ apiClient.interceptors.response.use(
       errors: error.response?.data?.errors || [],
       url: error.config?.url,
       payload: error.config?.data,
-      stack: error.stack,
     };
 
     console.error('[API Error]', errorData);
 
-    // Handle specific status codes
     if (errorStatus === 401) {
-      // Clear token and redirect if unauthorized
       localStorage.removeItem('token');
       window.location.href = '/login?session=expired';
     }
