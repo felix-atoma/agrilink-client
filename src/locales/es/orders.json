@@ -1,0 +1,32 @@
+{
+  "received": "Pedidos Recibidos",
+  "myOrders": "Mis Pedidos",
+  "orderDetails": "Detalles del Pedido",
+  "status": "Estado",
+  "statuses": {
+    "pending": "Pendiente",
+    "processing": "Procesando",
+    "shipped": "Enviado",
+    "delivered": "Entregado",
+    "cancelled": "Cancelado"
+  },
+  "total": "Total",
+  "date": "Fecha",
+  "items": "Artículos",
+  "statusUpdated": "Estado del Pedido Actualizado",
+  "noOrders": "No se Encontraron Pedidos",
+  "errors": {
+    "invalid_order_id": "Formato de ID de Pedido Inválido",
+    "order_fetch_failed": "Error al Cargar el Pedido"
+  },
+  "order": {
+    "details": "Detalles del Pedido",
+    "items": "Artículos",
+    "total": "Total",
+    "status": "Estado",
+    "shipping_address": "Dirección de Envío",
+    "no_items": "No hay Artículos en este Pedido",
+    "no_address": "No se Proporcionó Dirección de Envío",
+    "loaded_success": "Pedido Cargado Exitosamente"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "discover": "Discover Fresh Produce",
+  "myProducts": "My Products",
+  "addProduct": "Add Product",
+  "editProduct": "Edit Product",
+  "productDetails": "Product Details",
+  "name": "Name",
+  "price": "Price",
+  "minPrice": "Must be greater than 0",
+  "quantity": "Quantity",
+  "description": "Description",
+  "category": "Category",
+  "images": "Images",
+  "addSuccess": "Product added successfully",
+  "updateSuccess": "Product updated successfully",
+  "deleteConfirm": "Are you sure you want to delete this product?",
+  "noProducts": "No products found",
+  "categories": {
+    "vegetables": "Vegetables",
+    "fruits": "Fruits",
+    "grains": "Grains",
+    "dairy": "Dairy",
+    "meat": "Meat",
+    "other": "Other"
+  },
+  "addProductForm": {
+    "title": "Add New Product",
+    "productName": "Product Name",
+    "productDescription": "Description",
+    "productCategory": "Category",
+    "productPrice": "Price",
+    "productQuantity": "Quantity",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "productImage": "Product Image",
+    "uploadingImage": "Uploading image...",
+    "createProduct": "Create Product",
+    "creatingProduct": "Creating Product...",
+    "requiredField": "is required",
+    "priceValidation": "Price must be greater than 0",
+    "quantityValidation": "Quantity cannot be negative",
+    "imageValidation": "Only JPEG, PNG, and WebP images are allowed",
+    "sizeValidation": "Image size must be less than 5MB"
+  },
+  "validation": {
+    "required": "This field is required",
+    "invalidPrice": "Price must be greater than 0",
+    "invalidQuantity": "Quantity cannot be negative",
+    "invalidCoordinates": "Please enter valid coordinates"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "discover": "Descubre productos frescos",
+  "myProducts": "Mis Productos",
+  "addProduct": "Agregar producto",
+  "editProduct": "Editar producto",
+  "productDetails": "Detalles del producto",
+  "name": "Nombre",
+  "price": "Precio",
+  "minPrice": "Debe ser mayor que 0",
+  "quantity": "Cantidad",
+  "description": "Descripción",
+  "category": "Categoría",
+  "images": "Imágenes",
+  "addSuccess": "Producto agregado exitosamente",
+  "updateSuccess": "Producto actualizado exitosamente",
+  "deleteConfirm": "¿Estás seguro de que deseas eliminar este producto?",
+  "noProducts": "No se encontraron productos",
+  "categories": {
+    "vegetables": "Verduras",
+    "fruits": "Frutas",
+    "grains": "Granos",
+    "dairy": "Lácteos",
+    "meat": "Carne",
+    "other": "Otro"
+  },
+  "addProductForm": {
+    "title": "Agregar nuevo producto",
+    "productName": "Nombre del producto",
+    "productDescription": "Descripción",
+    "productCategory": "Categoría",
+    "productPrice": "Precio",
+    "productQuantity": "Cantidad",
+    "latitude": "Latitud",
+    "longitude": "Longitud",
+    "productImage": "Imagen del producto",
+    "uploadingImage": "Subiendo imagen...",
+    "createProduct": "Crear producto",
+    "creatingProduct": "Creando producto...",
+    "requiredField": "es obligatorio",
+    "priceValidation": "El precio debe ser mayor que 0",
+    "quantityValidation": "La cantidad no puede ser negativa",
+    "imageValidation": "Solo se permiten imágenes JPEG, PNG y WebP",
+    "sizeValidation": "El tamaño de la imagen debe ser menor de 5MB"
+  },
+  "validation": {
+    "required": "Este campo es obligatorio",
+    "invalidPrice": "El precio debe ser mayor que 0",
+    "invalidQuantity": "La cantidad no puede ser negativa",
+    "invalidCoordinates": "Por favor, introduce coordenadas válidas"
+  }
+}
