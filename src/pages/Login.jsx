@@ -1,73 +1,63 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useTranslation } from 'react-i18next';
 import LoginForm from '../components/auth/LoginForm';
+import { useTranslation } from 'react-i18next';
 
 const Login = () => {
   const { t } = useTranslation();
-  const { isAuthenticated, user, loading, error, login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [formError, setFormError] = useState('');
+  const [error, setError] = useState(null);
 
+  // ✅ Auto-redirect if already logged in
   useEffect(() => {
-    if (isAuthenticated && user) {
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
+    if (user?.role) {
+      redirectToDashboard(user.role);
     }
-  }, [isAuthenticated, user, navigate, location]);
+  }, [user]);
+
+ const redirectToDashboard = (role) => {
+  if (role === 'farmer') {
+    navigate('/dashboard/farmer');
+  } else if (role === 'buyer') {
+    navigate('/dashboard/buyer');
+  } else {
+    navigate('/');
+  }
+};
+
 
   const handleSubmit = async (email, password) => {
-    setFormError('');
-    if (!email || !password) {
-      setFormError(t('auth.errors.required_fields'));
+    setError(null);
+    const result = await login(email, password);
+
+    if (!result.success) {
+      setError(result.message || t('auth.login_error'));
       return;
     }
 
-    const result = await login({ email, password });
-    if (!result.success) {
-      setFormError(result.error || t('auth.errors.login_failed'));
-    }
+    const role = result.user?.role || user?.role;
+    redirectToDashboard(role);
   };
-
-  const sessionError = location.state?.reason === 'session-expired' 
-    ? t('auth.errors.session_expired') 
-    : null;
 
   return (
     <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
       <h1 className="text-2xl font-bold mb-4">{t('auth.login_title')}</h1>
-      
-      {sessionError && (
-        <div className="mb-4 bg-yellow-100 text-yellow-800 px-4 py-2 rounded">
-          {sessionError}
-        </div>
-      )}
-      
+      <p className="text-gray-600 mb-6">{t('auth.login_subtitle')}</p>
+
       {error && (
-        <div className="mb-4 bg-red-100 text-red-800 px-4 py-2 rounded">
+        <div className="mb-4 bg-red-100 text-red-700 px-4 py-2 rounded">
           {error}
         </div>
       )}
-      
-      {formError && (
-        <div className="mb-4 bg-red-100 text-red-800 px-4 py-2 rounded">
-          {formError}
-        </div>
-      )}
 
-      <LoginForm 
-        onSubmit={handleSubmit} 
-        loading={loading} 
-      />
+      <LoginForm onSubmit={handleSubmit} />
 
-      <p className="mt-4 text-center text-gray-600">
+      <p className="mt-4 text-center">
         {t('auth.no_account')}{' '}
-        <a 
-          href="/register" 
-          className="text-green-600 hover:underline font-medium"
-        >
+        <a href="/register" className="text-green-600 hover:underline">
           {t('auth.register_here')}
         </a>
       </p>

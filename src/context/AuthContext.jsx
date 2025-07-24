@@ -6,129 +6,247 @@ import { toast } from 'react-toastify';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [state, setState] = useState({
-    user: null,
-    loading: true,
-    error: null
-  });
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Helper function to get dashboard path
   const getDashboardPath = (role) => {
     switch (role) {
-      case 'farmer': return '/dashboard/farmer';
-      case 'buyer': return '/dashboard/buyer';
-      case 'admin': return '/admin';
-      default: return '/';
+      case 'farmer':
+        return '/dashboard/farmer';
+      case 'buyer':
+        return '/dashboard/buyer/orders';
+      case 'admin':
+        return '/admin';
+      default:
+        return '/';
     }
   };
 
+  // Initialize auth state
   const initializeAuth = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await apiClient.get('/auth/me');
-      if (!response.data?.data?.user) {
-        throw new Error('Invalid user data');
-      }
-      setState({ user: response.data.data.user, loading: false, error: null });
-    } catch (error) {
-      localStorage.removeItem('token');
-      setState({ user: null, loading: false, error: error.message });
+      setLoading(true);
+      const token = localStorage.getItem('token');
       
-      if (!['/login', '/register'].includes(location.pathname)) {
+      if (token) {
+        const response = await apiClient.get('/auth/me');
+        
+        // Updated to match your backend response
+        if (!response.data?.success || !response.data?.data) {
+          throw new Error('Invalid user data from server');
+        }
+        
+        setUser(response.data.data);
+      }
+    } catch (err) {
+      console.error('Auth initialization error:', err);
+      localStorage.removeItem('token');
+      setUser(null);
+      
+      if (location.pathname !== '/login') {
         navigate('/login', {
-          state: { from: location, reason: 'session-expired' },
-          replace: true
+          state: { from: location, sessionExpired: true }
         });
       }
+    } finally {
+      setLoading(false);
     }
   }, [navigate, location]);
 
   useEffect(() => {
     initializeAuth();
-    
-    const handleUnauthorized = () => {
-      setState({ user: null, loading: false, error: 'Session expired' });
-      navigate('/login', { state: { reason: 'session-expired' } });
-    };
-    
-    window.addEventListener('unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('unauthorized', handleUnauthorized);
-  }, [initializeAuth, navigate]);
+  }, [initializeAuth]);
 
+  // Login function
   const login = async (credentials) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await apiClient.post('/auth', credentials);
-      if (!response.data?.data?.token || !response.data?.data?.user) {
-        throw new Error('Invalid response data');
+      setLoading(true);
+      setError(null);
+
+      // Basic validation
+      if (!credentials.email?.trim() || !credentials.password?.trim()) {
+        throw new Error('Email and password are required');
       }
+
+      const response = await apiClient.post('/auth/login', credentials);
       
-      localStorage.setItem('token', response.data.data.token);
-      setState({ 
-        user: response.data.data.user, 
-        loading: false, 
-        error: null 
+      // Updated to match your backend response
+      if (!response.data?.success || !response.data?.data?.token || !response.data?.data?.user) {
+        throw new Error('Invalid server response structure');
+      }
+
+      const { user, token } = response.data.data;
+      
+      // Store token and set user
+      localStorage.setItem('token', token);
+      setUser(user);
+
+      // Get and navigate to dashboard path
+      const dashboardPath = getDashboardPath(user.role);
+      navigate(dashboardPath, { replace: true });
+
+      // Show success toast
+      toast.success('Login Successful', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
       });
+
+      return { success: true, user };
+    } catch (err) {
+      let errorMessage = 'Login failed';
       
-      const from = location.state?.from?.pathname || getDashboardPath(response.data.data.user.role);
-      navigate(from, { replace: true });
-      
-      toast.success('Login successful');
-      return { success: true };
-    } catch (error) {
-      setState(prev => ({ ...prev, loading: false, error: error.message }));
-      toast.error(error.message);
-      return { success: false, error: error.message };
+      // Enhanced error handling
+      if (err.response) {
+        switch (err.response.status) {
+          case 401:
+            errorMessage = err.response.data?.message || 'Invalid email or password';
+            break;
+          case 403:
+            errorMessage = 'Account not verified. Please check your email';
+            break;
+          case 429:
+            errorMessage = 'Too many attempts. Please try again later';
+            break;
+          default:
+            errorMessage = err.response.data?.message || errorMessage;
+        }
+      } else {
+        errorMessage = err.message;
+      }
+
+      console.error('Login error:', errorMessage);
+      setError(errorMessage);
+
+      // Show error toast
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Register function
   const register = async (userData) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await apiClient.post('/auth/register', userData);
-      if (!response.data?.data?.token || !response.data?.data?.user) {
-        throw new Error('Invalid response data');
+      setLoading(true);
+      setError(null);
+
+      // Basic validation
+      if (!userData.email?.trim() || !userData.password?.trim()) {
+        throw new Error('Email and password are required');
       }
+
+      const response = await apiClient.post('/auth/register', userData);
       
-      localStorage.setItem('token', response.data.data.token);
-      setState({ 
-        user: response.data.data.user, 
-        loading: false, 
-        error: null 
-      });
+      // Updated to match your backend response
+      if (!response.data?.success || !response.data?.data?.token || !response.data?.data?.user) {
+        throw new Error('Invalid server response structure');
+      }
+
+      const { user, token } = response.data.data;
       
-      navigate(getDashboardPath(response.data.data.user.role), { 
-        state: { welcome: true },
+      // Store token and set user
+      localStorage.setItem('token', token);
+      setUser(user);
+
+      // Verify token immediately
+      try {
+        await apiClient.get('/auth/me');
+      } catch (verifyErr) {
+        console.error('Token verification failed:', verifyErr);
+        throw new Error('Session validation failed');
+      }
+
+      // Get and navigate to dashboard path
+      const dashboardPath = getDashboardPath(user.role);
+      navigate(dashboardPath, { 
+        state: { welcome: true }, 
         replace: true 
       });
+
+      // Show success toast
+      toast.success('Registration Successful', {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      return { success: true, user };
+    } catch (err) {
+      let errorMessage = 'Registration failed';
       
-      toast.success('Registration successful');
-      return { success: true };
-    } catch (error) {
-      setState(prev => ({ ...prev, loading: false, error: error.message }));
-      toast.error(error.message);
-      return { success: false, error: error.message };
-    }
-  };
+      if (err.response) {
+        switch (err.response.status) {
+          case 400:
+            errorMessage = 'Validation error: ' + 
+              (err.response.data?.errors?.join(', ') || 'Invalid data provided');
+            break;
+          case 409:
+            errorMessage = 'Account already exists with this email';
+            break;
+          default:
+            errorMessage = err.response.data?.message || errorMessage;
+        }
+      } else {
+        errorMessage = err.message;
+      }
 
-  const logout = async () => {
-    try {
-      await apiClient.post('/auth/logout');
+      console.error('Registration error:', errorMessage);
+      setError(errorMessage);
+
+      // Show error toast
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      return { success: false, error: errorMessage };
     } finally {
-      localStorage.removeItem('token');
-      setState({ user: null, loading: false, error: null });
-      navigate('/login', { state: { loggedOut: true } });
-      toast.info('Logged out successfully');
+      setLoading(false);
     }
   };
 
+  // Logout function
+  const logout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+    navigate('/login', {
+      state: { loggedOut: true }
+    });
+  };
+
+  // Context value
   const value = {
-    ...state,
-    isAuthenticated: !!state.user,
+    user,
+    loading,
+    error,
     login,
     register,
     logout,
+    isAuthenticated: !!user,
     refreshAuth: initializeAuth
   };
 
@@ -137,7 +255,7 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
