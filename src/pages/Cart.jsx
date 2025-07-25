@@ -5,28 +5,15 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import Spinner from '../components/shared/Spinner';
 
-// Lazy load components with error boundaries
-const PaymentMethodSelector = React.lazy(() => import('../components/buyer/PaymentMethodSelector')
-  .catch(() => ({ default: () => <div>Payment options unavailable</div> })));
-
-const AddressForm = React.lazy(() => import('../components/buyer/AddressForm')
-  .catch(() => ({ default: () => <div>Address form unavailable</div> })));
-
-const CartItemsList = React.lazy(() => import('../components/buyer/CartItemsList')
-  .catch(() => ({ default: () => <div>Cart items unavailable</div> })));
-
-const CartSummary = React.lazy(() => import('../components/buyer/CartSummary')
-  .catch(() => ({ default: () => <div>Order summary unavailable</div> })));
+// Components
+const PaymentMethodSelector = React.lazy(() => import('../components/buyer/PaymentMethodSelector'));
+const AddressForm = React.lazy(() => import('../components/buyer/AddressForm'));
+const CartItemsList = React.lazy(() => import('../components/buyer/CartItemsList'));
+const CartSummary = React.lazy(() => import('../components/buyer/CartSummary'));
 
 const Cart = () => {
   const { t } = useTranslation();
-  const {
-    cart,
-    cartTotal,
-    loading: cartLoading,
-    createOrder,
-    clearCart
-  } = useCart();
+  const { cart, cartTotal, loading: cartLoading, createOrder, clearCart } = useCart();
   const navigate = useNavigate();
 
   // Form state
@@ -63,6 +50,11 @@ const Cart = () => {
     }));
   };
 
+  // Handle address form changes specifically
+  const handleAddressChange = (field, value) => {
+    handleChange('address', field, value);
+  };
+
   // Validate form
   const validateForm = () => {
     if (!cart || cart.length === 0) {
@@ -71,14 +63,14 @@ const Cart = () => {
     }
 
     const { street, city, country } = formState.address;
-    if (!street || !city || !country) {
+    if (!street?.trim() || !city?.trim() || !country?.trim()) {
       toast.error(t('checkout.addressIncomplete') || 'Please complete your shipping address');
       return false;
     }
 
     if (formState.paymentMethod === 'card') {
       const { cardNumber, expiry, cvv } = formState.cardDetails;
-      if (!cardNumber || !expiry || !cvv) {
+      if (!cardNumber?.trim() || !expiry?.trim() || !cvv?.trim()) {
         toast.error(t('checkout.cardIncomplete') || 'Please complete card details');
         return false;
       }
@@ -86,7 +78,7 @@ const Cart = () => {
 
     if (formState.paymentMethod === 'mobile') {
       const { provider, phone } = formState.mobileDetails;
-      if (!provider || !phone) {
+      if (!provider?.trim() || !phone?.trim()) {
         toast.error(t('checkout.mobileIncomplete') || 'Please complete mobile payment details');
         return false;
       }
@@ -100,17 +92,15 @@ const Cart = () => {
 
     setIsProcessing(true);
     try {
-      const products = cart.map(item => ({
-        product: item.product._id,
-        quantity: item.quantity,
-        price: item.product.price,
-        variantId: item.variantId || undefined,
-        name: item.product.name,
-        image: item.product.image || ''
-      }));
-
       const orderData = {
-        products,
+        products: cart.map(item => ({
+          product: item.product._id,
+          quantity: item.quantity,
+          price: item.product.price,
+          variantId: item.variantId || undefined,
+          name: item.product.name,
+          image: item.product.images?.[0]?.url || ''
+        })),
         shippingAddress: formState.address,
         paymentMethod: formState.paymentMethod,
         totalAmount: cartTotal,
@@ -127,7 +117,7 @@ const Cart = () => {
       if (result.success) {
         toast.success(t('checkout.success') || 'Order placed successfully!');
         clearCart();
-        setTimeout(() => navigate("/order-success"), 1500);
+        navigate("/order-success", { state: { orderId: result.orderId } });
       } else {
         throw new Error(result.message || t('checkout.error') || 'Order failed');
       }
@@ -143,8 +133,7 @@ const Cart = () => {
   useEffect(() => {
     const loadComponents = async () => {
       try {
-        // Preload components
-        await Promise.all([
+        await Promise.allSettled([
           import('../components/buyer/PaymentMethodSelector'),
           import('../components/buyer/AddressForm'),
           import('../components/buyer/CartItemsList'),
@@ -152,17 +141,23 @@ const Cart = () => {
         ]);
       } catch (error) {
         console.error('Component loading error:', error);
-        setComponentError('Some features may not work properly');
+        setComponentError(t('errors.componentLoad') || 'Some features may not work properly');
       }
     };
 
     loadComponents();
-  }, []);
+  }, [t]);
 
-  if (cartLoading) return <Spinner />;
+  if (cartLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Spinner className="h-12 w-12 text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
         {t('cart.title') || 'Your Shopping Cart'}
       </h1>
@@ -174,11 +169,11 @@ const Cart = () => {
       )}
 
       {cart.length === 0 ? (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded">
-          <p>{t('cart.empty') || 'Your cart is currently empty'}</p>
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded max-w-2xl">
+          <p className="mb-4">{t('cart.empty') || 'Your cart is currently empty'}</p>
           <button
             onClick={() => navigate('/products')}
-            className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
           >
             {t('cart.continueShopping') || 'Continue Shopping'}
           </button>
@@ -187,7 +182,7 @@ const Cart = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <React.Suspense fallback={<Spinner />}>
-              <CartItemsList items={cart} />
+              <CartItemsList items={cart} editable />
             </React.Suspense>
 
             <div className="bg-white p-6 rounded-lg shadow">
@@ -197,7 +192,7 @@ const Cart = () => {
               <React.Suspense fallback={<Spinner />}>
                 <AddressForm 
                   address={formState.address} 
-                  onChange={(field, value) => handleChange('address', field, value)} 
+                  onChange={handleAddressChange} 
                 />
               </React.Suspense>
             </div>
@@ -219,14 +214,15 @@ const Cart = () => {
             </div>
           </div>
 
-          <div>
+          <div className="sticky top-4 h-fit">
             <React.Suspense fallback={<Spinner />}>
               <CartSummary
                 total={cartTotal}
                 itemCount={cart.reduce((count, item) => count + item.quantity, 0)}
                 onCheckout={handleCheckout}
                 isProcessing={isProcessing}
-                onClearCart={clearCart}
+                shippingAddress={formState.address}
+                paymentMethod={formState.paymentMethod}
               />
             </React.Suspense>
           </div>
