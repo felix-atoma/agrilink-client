@@ -142,93 +142,95 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Register function
-  const register = async (userData) => {
-    try {
-      setLoading(true);
-      setError(null);
+ // ... (previous imports remain the same)
 
-      // Basic validation
-      if (!userData.email?.trim() || !userData.password?.trim()) {
-        throw new Error('Email and password are required');
-      }
+const register = async (userData) => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      const response = await apiClient.post('/auth/register', userData);
-      
-      // Updated to match your backend response
-      if (!response.data?.success || !response.data?.data?.token || !response.data?.data?.user) {
-        throw new Error('Invalid server response structure');
-      }
+    // Clean the data before sending
+    const cleanedData = {
+      ...userData,
+      password: userData.password.replace(/[;'"\\]/g, ''),
+      lat: userData.lat ? parseFloat(userData.lat) : undefined,
+      lng: userData.lng ? parseFloat(userData.lng) : undefined
+    };
 
-      const { user, token } = response.data.data;
-      
-      // Store token and set user
-      localStorage.setItem('token', token);
-      setUser(user);
-
-      // Verify token immediately
-      try {
-        await apiClient.get('/auth/me');
-      } catch (verifyErr) {
-        console.error('Token verification failed:', verifyErr);
-        throw new Error('Session validation failed');
-      }
-
-      // Get and navigate to dashboard path
-      const dashboardPath = getDashboardPath(user.role);
-      navigate(dashboardPath, { 
-        state: { welcome: true }, 
-        replace: true 
-      });
-
-      // Show success toast
-      toast.success('Registration Successful', {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-
-      return { success: true, user };
-    } catch (err) {
-      let errorMessage = 'Registration failed';
-      
-      if (err.response) {
-        switch (err.response.status) {
-          case 400:
-            errorMessage = 'Validation error: ' + 
-              (err.response.data?.errors?.join(', ') || 'Invalid data provided');
-            break;
-          case 409:
-            errorMessage = 'Account already exists with this email';
-            break;
-          default:
-            errorMessage = err.response.data?.message || errorMessage;
-        }
-      } else {
-        errorMessage = err.message;
-      }
-
-      console.error('Registration error:', errorMessage);
-      setError(errorMessage);
-
-      // Show error toast
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-
-      return { success: false, error: errorMessage };
-    } finally {
-      setLoading(false);
+    const response = await apiClient.post('/auth/register', cleanedData);
+    
+    if (!response.data?.success || !response.data?.token || !response.data?.user) {
+      throw new Error('Invalid server response');
     }
-  };
 
+    const { user, token } = response.data;
+    
+    localStorage.setItem('token', token);
+    setUser(user);
+
+    // Verify token immediately
+    try {
+      await apiClient.get('/api/v1/auth/me');
+    } catch (verifyErr) {
+      console.error('Token verification failed:', verifyErr);
+      throw new Error('Session validation failed');
+    }
+
+    // Navigate based on role
+    const dashboardPath = getDashboardPath(user.role);
+    navigate(dashboardPath, { 
+      state: { welcome: true }, 
+      replace: true 
+    });
+
+    toast.success('Registration Successful!', {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+
+    return { success: true, user };
+  } catch (err) {
+    let errorMessage = 'Registration failed';
+    
+    if (err.response) {
+      // Handle validation errors
+      if (err.response.status === 400 && err.response.data?.errors) {
+        errorMessage = err.response.data.errors
+          .map(e => e.message)
+          .join(', ');
+      } 
+      // Handle duplicate email
+      else if (err.response.status === 409) {
+        errorMessage = 'Email already registered';
+      }
+      else {
+        errorMessage = err.response.data?.message || errorMessage;
+      }
+    } else {
+      errorMessage = err.message;
+    }
+
+    setError(errorMessage);
+    toast.error(errorMessage, {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+
+    return { success: false, error: errorMessage };
+  } finally {
+    setLoading(false);
+  }
+};
+
+// ... (rest of the AuthContext remains the same)
   // Logout function
   const logout = () => {
     localStorage.removeItem('token');
