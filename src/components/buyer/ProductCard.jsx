@@ -15,6 +15,24 @@ const ProductCard = ({ product }) => {
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
 
+  // ✅ Updated image URL logic
+  const getImageUrl = () => {
+    if (imageError) return 'https://res.cloudinary.com/demo/image/upload/v1699999999/placeholder.jpg';
+
+    const imageObj = product.images?.[0];
+
+    if (imageObj?.url?.startsWith('http')) {
+      return imageObj.url;
+    }
+
+    // fallback to Cloudinary using public ID (rare case if URL not stored)
+    if (imageObj?.publicId) {
+      return `https://res.cloudinary.com/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/image/upload/${imageObj.publicId}`;
+    }
+
+    return 'https://res.cloudinary.com/demo/image/upload/v1699999999/placeholder.jpg';
+  };
+
   const handleAddToCart = () => {
     try {
       if (!product?._id) {
@@ -45,32 +63,6 @@ const ProductCard = ({ product }) => {
     } catch (err) {
       error(t('cart.error') || 'Failed to add to cart');
     }
-  };
-
-  const getImageUrl = () => {
-    if (imageError) return '/images/placeholder-product.jpg';
-
-    const firstImage = product.images?.[0];
-    if (!firstImage) return '/images/placeholder-product.jpg';
-
-    // Handle Cloudinary response object
-    if (typeof firstImage === 'object') {
-      // Prefer secure_url if available, otherwise fall back to url
-      return firstImage.secure_url || firstImage.url || '/images/placeholder-product.jpg';
-    }
-
-    // Handle string URL (either Cloudinary or external)
-    if (typeof firstImage === 'string') {
-      // Ensure Cloudinary URLs use HTTPS
-      if (firstImage.includes('res.cloudinary.com')) {
-        return firstImage.startsWith('http:') 
-          ? firstImage.replace('http:', 'https:') 
-          : firstImage;
-      }
-      return firstImage;
-    }
-
-    return '/images/placeholder-product.jpg';
   };
 
   return (
