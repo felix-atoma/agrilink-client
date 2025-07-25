@@ -1,13 +1,21 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-const AddressForm = ({ address, onChange }) => {
+const AddressForm = ({ address = {}, onChange }) => {
   const { t } = useTranslation();
+
+  // Initialize with default empty values if address is undefined
+  const formData = {
+    street: address?.street || '',
+    city: address?.city || '',
+    country: address?.country || '',
+    postalCode: address?.postalCode || '',
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     onChange({
-      ...address,
+      ...formData,
       [name]: value
     });
   };
@@ -22,7 +30,7 @@ const AddressForm = ({ address, onChange }) => {
           type="text"
           id="street"
           name="street"
-          value={address.street}
+          value={formData.street}
           onChange={handleChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           required
@@ -38,7 +46,7 @@ const AddressForm = ({ address, onChange }) => {
             type="text"
             id="city"
             name="city"
-            value={address.city}
+            value={formData.city}
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             required
@@ -52,7 +60,7 @@ const AddressForm = ({ address, onChange }) => {
           <select
             id="country"
             name="country"
-            value={address.country}
+            value={formData.country}
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             required
@@ -61,7 +69,6 @@ const AddressForm = ({ address, onChange }) => {
             <option value="Ghana">Ghana</option>
             <option value="Nigeria">Nigeria</option>
             <option value="South Africa">South Africa</option>
-            {/* Add more countries as needed */}
           </select>
         </div>
       </div>
@@ -74,7 +81,7 @@ const AddressForm = ({ address, onChange }) => {
           type="text"
           id="postalCode"
           name="postalCode"
-          value={address.postalCode}
+          value={formData.postalCode}
           onChange={handleChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
         />
