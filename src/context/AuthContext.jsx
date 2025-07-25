@@ -98,13 +98,35 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, user };
     } catch (err) {
-      // ... (keep existing login error handling)
+      let errorMessage = 'Login failed';
+      
+      if (err.response) {
+        if (err.response.status === 401) {
+          errorMessage = 'Invalid email or password';
+        } else {
+          errorMessage = err.response.data?.message || errorMessage;
+        }
+      } else {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
   };
 
-  // Enhanced Register function
+  // Register function (without verification endpoint)
   const register = async (userData) => {
     try {
       setLoading(true);
@@ -128,7 +150,6 @@ export const AuthProvider = ({ children }) => {
         name: userData.name.trim(),
         email: userData.email.trim().toLowerCase(),
         password: userData.password,
-        confirmPassword: userData.confirmPassword,
         role: userData.role,
         contact: userData.contact,
         ...(userData.role === 'farmer' && {
@@ -148,40 +169,47 @@ export const AuthProvider = ({ children }) => {
         throw new Error(serverError);
       }
 
-      if (!response.data.data?.token || !response.data.data?.user) {
-        throw new Error('Incomplete registration data received');
+      // Check if we got token and user data directly from registration
+      if (response.data.data?.token && response.data.data?.user) {
+        const { user, token } = response.data.data;
+        
+        localStorage.setItem('token', token);
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser(user);
+
+        const dashboardPath = getDashboardPath(user.role);
+        navigate(dashboardPath, { 
+          state: { 
+            welcome: true,
+            newUser: true 
+          }, 
+          replace: true 
+        });
+
+        toast.success(
+          <div>
+            <h4>Welcome to AgriLink, {user.name}!</h4>
+            <p>Your {user.role} account was successfully created</p>
+          </div>, 
+          {
+            position: "top-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          }
+        );
+
+        return { success: true, user };
       }
 
-      const { user, token } = response.data.data;
-      
-      // Store token and update auth state
-      localStorage.setItem('token', token);
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-
-      // Verify session immediately
-      try {
-        await apiClient.get('/auth/verify');
-      } catch (verifyErr) {
-        console.error('Session verification failed:', verifyErr);
-        throw new Error('Account created but session verification failed');
-      }
-
-      // Navigate to appropriate dashboard
-      const dashboardPath = getDashboardPath(user.role);
-      navigate(dashboardPath, { 
-        state: { 
-          welcome: true,
-          newUser: true 
-        }, 
-        replace: true 
-      });
-
-      // Success notification
+      // If no token in response but registration was successful
+      // (e.g., when email verification is required)
       toast.success(
         <div>
-          <h4>Welcome to AgriLink, {user.name}!</h4>
-          <p>Your {user.role} account was successfully created</p>
+          <h4>Registration Successful!</h4>
+          <p>Please check your email to verify your account</p>
         </div>, 
         {
           position: "top-right",
@@ -193,7 +221,8 @@ export const AuthProvider = ({ children }) => {
         }
       );
 
-      return { success: true, user };
+      navigate('/login', { state: { registrationSuccess: true } });
+      return { success: true };
 
     } catch (err) {
       let errorMessage = 'Registration failed';
@@ -225,7 +254,6 @@ export const AuthProvider = ({ children }) => {
       console.error('Registration error:', errorMessage);
       setError(errorMessage);
 
-      // Show error notification
       toast.error(
         <div>
           <h4>Registration Error</h4>
