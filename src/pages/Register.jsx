@@ -1,4 +1,5 @@
-import React, { useState } from 'react';  // Added useState import
+import React from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -9,33 +10,20 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 const Register = () => {
   const { t } = useTranslation();
   const { register, loading: authLoading } = useAuth();
-  const [errors, setErrors] = useState({});
+  const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (userData) => {
-    setErrors({});
+    setError(null);
     setIsSubmitting(true);
     
     try {
-      const result = await register(userData);
-      
-      if (!result.success) {
-        // Convert error messages to field-specific errors if available
-        if (result.error.includes(',')) {
-          const fieldErrors = {};
-          result.error.split(',').forEach(err => {
-            const match = err.match(/(\w+):\s*(.+)/);
-            if (match) {
-              fieldErrors[match[1].toLowerCase()] = match[2].trim();
-            }
-          });
-          setErrors(fieldErrors);
-        }
-      }
+      await register(userData);
+      // On success, AuthContext will handle navigation
     } catch (err) {
-      console.error('Registration error:', err);
-      setErrors({ general: t('auth.registration_error') });
+      const errorMessage = err.response?.data?.message || t('auth.registration_error');
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -68,16 +56,15 @@ const Register = () => {
       </h1>
       <p className="text-gray-600 mb-6">{t('auth.register_subtitle')}</p>
 
-      {errors.general && (
+      {error && (
         <div className="mb-4 p-3 bg-red-50 text-red-600 rounded border border-red-100">
-          {errors.general}
+          {error}
         </div>
       )}
 
       <RegisterForm 
         onSubmit={handleSubmit} 
         isSubmitting={isSubmitting}
-        errors={errors}
       />
 
       <div className="mt-6 pt-4 border-t border-gray-100 text-center">

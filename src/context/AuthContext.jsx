@@ -18,9 +18,9 @@ export const AuthProvider = ({ children }) => {
       case 'farmer':
         return '/dashboard/farmer';
       case 'buyer':
-        return '/dashboard/buyer/orders';
+        return '/dashboard/buyer';
       case 'admin':
-        return '/admin';
+        return '/admin/dashboard';
       default:
         return '/';
     }
@@ -33,9 +33,9 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       
       if (token) {
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         const response = await apiClient.get('/auth/me');
         
-        // Updated to match your backend response
         if (!response.data?.success || !response.data?.data) {
           throw new Error('Invalid user data from server');
         }
@@ -45,6 +45,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Auth initialization error:', err);
       localStorage.removeItem('token');
+      delete apiClient.defaults.headers.common['Authorization'];
       setUser(null);
       
       if (location.pathname !== '/login') {
@@ -67,30 +68,26 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      // Basic validation
       if (!credentials.email?.trim() || !credentials.password?.trim()) {
         throw new Error('Email and password are required');
       }
 
       const response = await apiClient.post('/auth/login', credentials);
       
-      // Updated to match your backend response
       if (!response.data?.success || !response.data?.data?.token || !response.data?.data?.user) {
         throw new Error('Invalid server response structure');
       }
 
       const { user, token } = response.data.data;
       
-      // Store token and set user
       localStorage.setItem('token', token);
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
 
-      // Get and navigate to dashboard path
       const dashboardPath = getDashboardPath(user.role);
       navigate(dashboardPath, { replace: true });
 
-      // Show success toast
-      toast.success('Login Successful', {
+      toast.success(`Welcome back, ${user.name}!`, {
         position: "top-right",
         autoClose: 3000,
         hideProgressBar: false,
@@ -101,39 +98,148 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, user };
     } catch (err) {
-      let errorMessage = 'Login failed';
+      // ... (keep existing login error handling)
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enhanced Register function
+  const register = async (userData) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Validate required fields client-side first
+      const requiredFields = ['name', 'email', 'password', 'confirmPassword', 'role', 'contact'];
+      const missingFields = requiredFields.filter(field => !userData[field]);
       
-      // Enhanced error handling
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+
+      // Password confirmation check
+      if (userData.password !== userData.confirmPassword) {
+        throw new Error('Password and confirmation do not match');
+      }
+
+      // Build complete payload
+      const payload = {
+        name: userData.name.trim(),
+        email: userData.email.trim().toLowerCase(),
+        password: userData.password,
+        confirmPassword: userData.confirmPassword,
+        role: userData.role,
+        contact: userData.contact,
+        ...(userData.role === 'farmer' && {
+          farmName: userData.farmName?.trim(),
+          lat: userData.lat,
+          lng: userData.lng
+        })
+      };
+
+      const response = await apiClient.post('/auth/register', payload);
+      
+      // Validate server response
+      if (!response.data?.success) {
+        const serverError = response.data?.error || 
+                          (response.data?.errors ? response.data.errors.map(e => e.message).join(', ') : null) ||
+                          'Registration failed';
+        throw new Error(serverError);
+      }
+
+      if (!response.data.data?.token || !response.data.data?.user) {
+        throw new Error('Incomplete registration data received');
+      }
+
+      const { user, token } = response.data.data;
+      
+      // Store token and update auth state
+      localStorage.setItem('token', token);
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(user);
+
+      // Verify session immediately
+      try {
+        await apiClient.get('/auth/verify');
+      } catch (verifyErr) {
+        console.error('Session verification failed:', verifyErr);
+        throw new Error('Account created but session verification failed');
+      }
+
+      // Navigate to appropriate dashboard
+      const dashboardPath = getDashboardPath(user.role);
+      navigate(dashboardPath, { 
+        state: { 
+          welcome: true,
+          newUser: true 
+        }, 
+        replace: true 
+      });
+
+      // Success notification
+      toast.success(
+        <div>
+          <h4>Welcome to AgriLink, {user.name}!</h4>
+          <p>Your {user.role} account was successfully created</p>
+        </div>, 
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        }
+      );
+
+      return { success: true, user };
+
+    } catch (err) {
+      let errorMessage = 'Registration failed';
+      
+      // Parse different error formats
       if (err.response) {
-        switch (err.response.status) {
-          case 401:
-            errorMessage = err.response.data?.message || 'Invalid email or password';
-            break;
-          case 403:
-            errorMessage = 'Account not verified. Please check your email';
-            break;
-          case 429:
-            errorMessage = 'Too many attempts. Please try again later';
-            break;
-          default:
-            errorMessage = err.response.data?.message || errorMessage;
+        // Handle validation errors
+        if (err.response.status === 400) {
+          if (err.response.data?.errors) {
+            errorMessage = err.response.data.errors
+              .map(error => `${error.param ? `${error.param}: ` : ''}${error.msg || error.message}`)
+              .join('\n');
+          } else if (err.response.data?.message) {
+            errorMessage = err.response.data.message;
+          }
+        } 
+        // Handle duplicate email
+        else if (err.response.status === 409) {
+          errorMessage = 'This email is already registered. Please login instead.';
+        }
+        // Handle other API errors
+        else {
+          errorMessage = err.response.data?.message || errorMessage;
         }
       } else {
         errorMessage = err.message;
       }
 
-      console.error('Login error:', errorMessage);
+      console.error('Registration error:', errorMessage);
       setError(errorMessage);
 
-      // Show error toast
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      // Show error notification
+      toast.error(
+        <div>
+          <h4>Registration Error</h4>
+          <p>{errorMessage}</p>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 8000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        }
+      );
 
       return { success: false, error: errorMessage };
     } finally {
@@ -141,102 +247,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register function
- // ... (previous imports remain the same)
-
-const register = async (userData) => {
-  try {
-    setLoading(true);
-    setError(null);
-
-    // Clean the data before sending
-    const cleanedData = {
-      ...userData,
-      password: userData.password.replace(/[;'"\\]/g, ''),
-      lat: userData.lat ? parseFloat(userData.lat) : undefined,
-      lng: userData.lng ? parseFloat(userData.lng) : undefined
-    };
-
-    const response = await apiClient.post('/auth/register', cleanedData);
-    
-    if (!response.data?.success || !response.data?.token || !response.data?.user) {
-      throw new Error('Invalid server response');
-    }
-
-    const { user, token } = response.data;
-    
-    localStorage.setItem('token', token);
-    setUser(user);
-
-    // Verify token immediately
-    try {
-      await apiClient.get('/api/v1/auth/me');
-    } catch (verifyErr) {
-      console.error('Token verification failed:', verifyErr);
-      throw new Error('Session validation failed');
-    }
-
-    // Navigate based on role
-    const dashboardPath = getDashboardPath(user.role);
-    navigate(dashboardPath, { 
-      state: { welcome: true }, 
-      replace: true 
-    });
-
-    toast.success('Registration Successful!', {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
-
-    return { success: true, user };
-  } catch (err) {
-    let errorMessage = 'Registration failed';
-    
-    if (err.response) {
-      // Handle validation errors
-      if (err.response.status === 400 && err.response.data?.errors) {
-        errorMessage = err.response.data.errors
-          .map(e => e.message)
-          .join(', ');
-      } 
-      // Handle duplicate email
-      else if (err.response.status === 409) {
-        errorMessage = 'Email already registered';
-      }
-      else {
-        errorMessage = err.response.data?.message || errorMessage;
-      }
-    } else {
-      errorMessage = err.message;
-    }
-
-    setError(errorMessage);
-    toast.error(errorMessage, {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
-
-    return { success: false, error: errorMessage };
-  } finally {
-    setLoading(false);
-  }
-};
-
-// ... (rest of the AuthContext remains the same)
   // Logout function
   const logout = () => {
     localStorage.removeItem('token');
+    delete apiClient.defaults.headers.common['Authorization'];
     setUser(null);
     navigate('/login', {
-      state: { loggedOut: true }
+      state: { 
+        loggedOut: true,
+        from: location.pathname 
+      }
     });
   };
 
@@ -249,7 +269,8 @@ const register = async (userData) => {
     register,
     logout,
     isAuthenticated: !!user,
-    refreshAuth: initializeAuth
+    refreshAuth: initializeAuth,
+    getDashboardPath
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
