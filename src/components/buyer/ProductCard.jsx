@@ -53,12 +53,21 @@ const ProductCard = ({ product }) => {
     const firstImage = product.images?.[0];
     if (!firstImage) return '/images/placeholder-product.jpg';
 
-    if (typeof firstImage === 'string') {
-      return firstImage; // assume it's already a valid Cloudinary or external URL
+    // Handle Cloudinary response object
+    if (typeof firstImage === 'object') {
+      // Prefer secure_url if available, otherwise fall back to url
+      return firstImage.secure_url || firstImage.url || '/images/placeholder-product.jpg';
     }
 
-    if (typeof firstImage === 'object' && firstImage.url) {
-      return firstImage.url;
+    // Handle string URL (either Cloudinary or external)
+    if (typeof firstImage === 'string') {
+      // Ensure Cloudinary URLs use HTTPS
+      if (firstImage.includes('res.cloudinary.com')) {
+        return firstImage.startsWith('http:') 
+          ? firstImage.replace('http:', 'https:') 
+          : firstImage;
+      }
+      return firstImage;
     }
 
     return '/images/placeholder-product.jpg';
