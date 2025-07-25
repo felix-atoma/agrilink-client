@@ -48,27 +48,20 @@ const ProductCard = ({ product }) => {
   };
 
   const getImageUrl = () => {
-    if (imageError) return '/images/placeholder-product.webp';
+    if (imageError) return '/images/placeholder-product.jpg';
 
     const firstImage = product.images?.[0];
-    if (!firstImage) return '/images/placeholder-product.webp';
+    if (!firstImage) return '/images/placeholder-product.jpg';
 
-    // Case 1: Cloudinary response object with all fields
-    if (typeof firstImage === 'object' && firstImage.public_id) {
-      const cloudName = 'dbjjbxazd'; // Your Cloudinary cloud name
-      const version = firstImage.version ? `v${firstImage.version}` : '';
-      const format = firstImage.format || 'webp';
-      return `https://res.cloudinary.com/${cloudName}/image/upload/${version}/${firstImage.public_id}.${format}`;
+    // Handle Cloudinary response object
+    if (typeof firstImage === 'object') {
+      // Prefer secure_url if available, otherwise fall back to url
+      return firstImage.secure_url || firstImage.url || '/images/placeholder-product.jpg';
     }
 
-    // Case 2: Cloudinary object with url/secure_url
-    if (typeof firstImage === 'object' && (firstImage.url || firstImage.secure_url)) {
-      const url = firstImage.secure_url || firstImage.url;
-      return url.startsWith('http:') ? url.replace('http:', 'https:') : url;
-    }
-
-    // Case 3: Direct string URL
+    // Handle string URL (either Cloudinary or external)
     if (typeof firstImage === 'string') {
+      // Ensure Cloudinary URLs use HTTPS
       if (firstImage.includes('res.cloudinary.com')) {
         return firstImage.startsWith('http:') 
           ? firstImage.replace('http:', 'https:') 
@@ -77,7 +70,7 @@ const ProductCard = ({ product }) => {
       return firstImage;
     }
 
-    return '/images/placeholder-product.webp';
+    return '/images/placeholder-product.jpg';
   };
 
   return (
@@ -89,7 +82,6 @@ const ProductCard = ({ product }) => {
           className="w-full h-full object-cover rounded"
           onError={() => setImageError(true)}
           loading="lazy"
-          decoding="async"
         />
       </div>
 

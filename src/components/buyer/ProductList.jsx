@@ -18,11 +18,9 @@ const ProductList = ({ products = [], loading = false, emptyMessage = '' }) => {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <img
-          src="/images/empty-box.webp"
+          src="/images/empty-box.svg"
           alt="No results"
           className="h-32 w-32 mb-4 opacity-50"
-          loading="lazy"
-          decoding="async"
         />
         <p className="text-gray-500 text-lg font-medium">
           {emptyMessage || t('common.noResults')}
