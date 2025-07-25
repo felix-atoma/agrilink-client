@@ -15,24 +15,6 @@ const ProductCard = ({ product }) => {
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
 
-  // ✅ Updated image URL logic
-  const getImageUrl = () => {
-    if (imageError) return 'https://res.cloudinary.com/demo/image/upload/v1699999999/placeholder.jpg';
-
-    const imageObj = product.images?.[0];
-
-    if (imageObj?.url?.startsWith('http')) {
-      return imageObj.url;
-    }
-
-    // fallback to Cloudinary using public ID (rare case if URL not stored)
-    if (imageObj?.publicId) {
-      return `https://res.cloudinary.com/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/image/upload/${imageObj.publicId}`;
-    }
-
-    return 'https://res.cloudinary.com/demo/image/upload/v1699999999/placeholder.jpg';
-  };
-
   const handleAddToCart = () => {
     try {
       if (!product?._id) {
@@ -50,19 +32,31 @@ const ProductCard = ({ product }) => {
         return;
       }
 
-      addToCart(
-        {
-          ...product,
-          variantId: selectedVariant,
-          variantName: selectedVariant,
-        },
-        quantity
-      );
+      addToCart({
+        ...product,
+        variantId: selectedVariant,
+        variantName: selectedVariant,
+      }, quantity);
 
       success(t('cart.added') || 'Product added to cart');
     } catch (err) {
       error(t('cart.error') || 'Failed to add to cart');
     }
+  };
+
+  // Generate proper Cloudinary URL with transformations
+  const getImageUrl = () => {
+    if (imageError) return '/images/placeholder-product.jpg';
+    
+    if (!product.images?.[0]) return '/images/placeholder-product.jpg';
+
+    // If already a full URL (Cloudinary or otherwise)
+    if (product.images[0].startsWith('http')) {
+      return product.images[0];
+    }
+
+    // If stored as Cloudinary public ID
+    return `https://res.cloudinary.com/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/image/upload/w_400,h_300,c_fill,q_auto/${product.images[0]}`;
   };
 
   return (
